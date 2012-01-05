@@ -231,8 +231,25 @@ class Chosen extends AbstractChosen
       @selected_item.addClass "chzn-single-with-drop"
       if @result_single_selected
         this.result_do_highlight( @result_single_selected )
+      @selected_item.removeClass('chzn-pop-up')
+      @selected_item.removeClass('chzn-pop-down')
 
-    dd_top = if @is_multiple then @container.height() else (@container.height() - 1)
+    @dropdown.removeClass('chzn-pop-up')
+    @dropdown.removeClass('chzn-pop-down')
+    @search_container.removeClass('chzn-pop-up')
+    @search_container.removeClass('chzn-pop-down')
+    if this.should_pop_up()
+      dd_top = if @is_multiple then (-1 - @dropdown.height()) else ((-1 - @dropdown.height()))
+      @dropdown.addClass('chzn-pop-up')
+      if not @is_multiple
+        @selected_item.addClass('chzn-pop-up')
+      @search_container.addClass('chzn-pop-up')
+    else
+      dd_top = if @is_multiple then @container.height() else (@container.height() - 1)
+      @dropdown.addClass('chzn-pop-down')
+      if not @is_multiple
+        @selected_item.addClass('chzn-pop-down')
+      @search_container.addClass('chzn-pop-down')
     @dropdown.css {"top":  dd_top + "px", "left":0}
     @results_showing = true
 
@@ -240,6 +257,18 @@ class Chosen extends AbstractChosen
     @search_field.val @search_field.val()
 
     this.winnow_results()
+
+  should_pop_up: ->
+    $parent = $(@view_reference)
+    $child = @dropdown.parent()
+    parent_top = $parent.offset().top
+    parent_bottom = $parent.offset().top + $parent.height()
+    child_top = $child.offset().top
+    child_bottom = $child.offset().top + $child.height()
+    if (child_top - parent_top) > (parent_bottom - child_bottom)
+      return true
+    else
+      return false
 
   results_hide: ->
     @selected_item.removeClass "chzn-single-with-drop" unless @is_multiple
