@@ -131,7 +131,8 @@ Copyright (c) 2011 by Harvest
       this.disable_search_threshold = this.options.disable_search_threshold || 0;
       this.choices = 0;
       this.results_none_found = this.options.no_results_text || "No results match";
-      return this.search_separator = this.options.search_separator || " ";
+      this.search_separator = this.options.search_separator || " ";
+      return this.view_reference = this.options.view_reference || "body";
     };
 
     AbstractChosen.prototype.mouse_enter = function() {
@@ -548,8 +549,24 @@ Copyright (c) 2011 by Harvest
         if (this.result_single_selected) {
           this.result_do_highlight(this.result_single_selected);
         }
+        this.selected_item.removeClass('chzn-pop-up');
+        this.selected_item.removeClass('chzn-pop-down');
       }
-      dd_top = this.is_multiple ? this.container.height() : this.container.height() - 1;
+      this.dropdown.removeClass('chzn-pop-up');
+      this.dropdown.removeClass('chzn-pop-down');
+      this.search_container.removeClass('chzn-pop-up');
+      this.search_container.removeClass('chzn-pop-down');
+      if (this.should_pop_up()) {
+        dd_top = this.is_multiple ? -1 - this.dropdown.height() : -1 - this.dropdown.height();
+        this.dropdown.addClass('chzn-pop-up');
+        if (!this.is_multiple) this.selected_item.addClass('chzn-pop-up');
+        this.search_container.addClass('chzn-pop-up');
+      } else {
+        dd_top = this.is_multiple ? this.container.height() : this.container.height() - 1;
+        this.dropdown.addClass('chzn-pop-down');
+        if (!this.is_multiple) this.selected_item.addClass('chzn-pop-down');
+        this.search_container.addClass('chzn-pop-down');
+      }
       this.dropdown.css({
         "top": dd_top + "px",
         "left": 0
@@ -558,6 +575,21 @@ Copyright (c) 2011 by Harvest
       this.search_field.focus();
       this.search_field.val(this.search_field.val());
       return this.winnow_results();
+    };
+
+    Chosen.prototype.should_pop_up = function() {
+      var $child, $parent, child_bottom, child_top, parent_bottom, parent_top;
+      $parent = $(this.view_reference);
+      $child = this.dropdown.parent();
+      parent_top = $parent.offset().top;
+      parent_bottom = $parent.offset().top + $parent.height();
+      child_top = $child.offset().top;
+      child_bottom = $child.offset().top + $child.height();
+      if ((child_top - parent_top) > (parent_bottom - child_bottom)) {
+        return true;
+      } else {
+        return false;
+      }
     };
 
     Chosen.prototype.results_hide = function() {

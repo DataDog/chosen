@@ -32,6 +32,7 @@ class AbstractChosen
     @choices = 0
     @results_none_found = @options.no_results_text or "No results match"
     @search_separator = @options.search_separator || " "
+    @view_reference = @options.view_reference || "body"
 
   mouse_enter: -> @mouse_on_container = true
   mouse_leave: -> @mouse_on_container = false
