@@ -557,7 +557,7 @@ Copyright (c) 2011 by Harvest
       this.search_container.removeClass('chzn-pop-up');
       this.search_container.removeClass('chzn-pop-down');
       if (this.should_pop_up()) {
-        dd_top = this.is_multiple ? -1 - this.dropdown.height() : -1 - this.dropdown.height();
+        dd_top = this.is_multiple ? -1 - this.dropdown.height() : 0 - this.dropdown.height();
         this.dropdown.addClass('chzn-pop-up');
         if (!this.is_multiple) this.selected_item.addClass('chzn-pop-up');
         this.search_container.addClass('chzn-pop-up');

@@ -239,7 +239,7 @@ class Chosen extends AbstractChosen
     @search_container.removeClass('chzn-pop-up')
     @search_container.removeClass('chzn-pop-down')
     if this.should_pop_up()
-      dd_top = if @is_multiple then (-1 - @dropdown.height()) else ((-1 - @dropdown.height()))
+      dd_top = if @is_multiple then (-1 - @dropdown.height()) else ((0 - @dropdown.height()))
       @dropdown.addClass('chzn-pop-up')
       if not @is_multiple
         @selected_item.addClass('chzn-pop-up')
