@@ -296,7 +296,7 @@ Copyright (c) 2011 by Harvest
       container_props = {
         'id': this.container_id,
         'class': "chzn-container" + (this.is_rtl ? ' chzn-rtl' : ''),
-        'style': 'width: ' + this.f_width + 'px'
+        'width': this.options.flexWidth ? null : this.f_width
       };
       this.default_text = this.form_field.readAttribute('data-placeholder') ? this.form_field.readAttribute('data-placeholder') : this.default_text_default;
       base_template = this.is_multiple ? new Element('div', container_props).update(this.multi_temp.evaluate({
@@ -313,7 +313,6 @@ Copyright (c) 2011 by Harvest
       dd_top = this.container.getHeight();
       dd_width = this.f_width - get_side_border_padding(this.dropdown);
       this.dropdown.setStyle({
-        "width": dd_width + "px",
         "top": dd_top + "px"
       });
       this.search_field = this.container.down('input');
