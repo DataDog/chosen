@@ -7,6 +7,7 @@ root = this
 class Chosen extends AbstractChosen
 
   setup: ->
+    @current_value = @form_field.value
     @is_rtl = @form_field.hasClassName "chzn-rtl"
 
   finish_setup: ->
@@ -16,13 +17,13 @@ class Chosen extends AbstractChosen
     super()
     
     # HTML Templates
-    @single_temp = new Template('<a href="javascript:void(0)" class="chzn-single"><span>#{default}</span><div><b></b></div></a><div class="chzn-drop" style="left:-9000px;"><div class="chzn-search"><input type="text" autocomplete="off" /></div><ul class="chzn-results"></ul></div>')
+    @single_temp = new Template('<a href="javascript:void(0)" class="chzn-single chzn-default"><span>#{default}</span><div><b></b></div></a><div class="chzn-drop" style="left:-9000px;"><div class="chzn-search"><input type="text" autocomplete="off" /></div><ul class="chzn-results"></ul></div>')
     @multi_temp = new Template('<ul class="chzn-choices"><li class="search-field"><input type="text" value="#{default}" class="default" autocomplete="off" style="width:25px;" /></li></ul><div class="chzn-drop" style="left:-9000px;"><ul class="chzn-results"></ul></div>')
     @choice_temp = new Template('<li class="search-choice" id="#{id}"><span>#{choice}</span><a href="javascript:void(0)" class="search-choice-close" rel="#{position}"></a></li>')
     @no_results_temp = new Template('<li class="no-results">' + @results_none_found + ' "<span>#{terms}</span>"</li>')
 
   set_up_html: ->
-    @container_id = @form_field.identify().replace(/(:|\.)/g, '_') + "_chzn"
+    @container_id = @form_field.identify().replace(/[^\w]/g, '_') + "_chzn"
     
     @f_width = if @form_field.getStyle("width") then parseInt @form_field.getStyle("width"), 10 else @form_field.getWidth()
     
@@ -30,8 +31,6 @@ class Chosen extends AbstractChosen
       'id': @container_id
       'class': "chzn-container#{ if @is_rtl then ' chzn-rtl' else '' }"
       'width': if @options.flexWidth then null else @f_width
-    
-    @default_text = if @form_field.readAttribute 'data-placeholder' then @form_field.readAttribute 'data-placeholder' else @default_text_default
     
     base_template = if @is_multiple then new Element('div', container_props).update( @multi_temp.evaluate({ "default": @default_text}) ) else new Element('div', container_props).update( @single_temp.evaluate({ "default":@default_text }) )
 
@@ -83,6 +82,8 @@ class Chosen extends AbstractChosen
     if @is_multiple
       @search_choices.observe "click", (evt) => this.choices_click(evt)
       @search_field.observe "focus", (evt) => this.input_focus(evt)
+    else
+      @container.observe "click", (evt) => evt.preventDefault() # gobble click of anchor
 
   search_field_disabled: ->
     @is_disabled = @form_field.disabled
@@ -99,7 +100,7 @@ class Chosen extends AbstractChosen
   container_mousedown: (evt) ->
     if !@is_disabled
       target_closelink =  if evt? then evt.target.hasClassName "search-choice-close" else false
-      if evt and evt.type is "mousedown"
+      if evt and evt.type is "mousedown" and not @results_showing
         evt.stop()
       if not @pending_destroy_click and not target_closelink
         if not @active_field
@@ -114,7 +115,7 @@ class Chosen extends AbstractChosen
         @pending_destroy_click = false
   
   container_mouseup: (evt) ->
-    this.results_reset(evt) if evt.target.nodeName is "ABBR"
+    this.results_reset(evt) if evt.target.nodeName is "ABBR" and not @is_disabled
 
   blur_test: (evt) ->
     this.close_field() if not @active_field and @container.hasClassName("chzn-container-active")
@@ -162,7 +163,7 @@ class Chosen extends AbstractChosen
       @search_choices.select("li.search-choice").invoke("remove")
       @choices = 0
     else if not @is_multiple
-      @selected_item.down("span").update(@default_text)
+      @selected_item.addClassName("chzn-default").down("span").update(@default_text)
       if @form_field.options.length <= @disable_search_threshold
         @container.addClassName "chzn-container-single-nosearch"
       else
@@ -177,7 +178,7 @@ class Chosen extends AbstractChosen
         if data.selected and @is_multiple
           this.choice_build data
         else if data.selected and not @is_multiple
-          @selected_item.down("span").update( data.html )
+          @selected_item.removeClassName("chzn-default").down("span").update( data.html )
           this.single_deselect_control_build() if @allow_single_deselect
 
     this.search_field_disabled()
@@ -222,8 +223,12 @@ class Chosen extends AbstractChosen
       @selected_item.addClassName('chzn-single-with-drop')
       if @result_single_selected
         this.result_do_highlight( @result_single_selected )
+    else if @max_selected_options <= @choices
+      @form_field.fire("liszt:maxselected", {chosen: this})
+      return false
 
     dd_top = if @is_multiple then @container.getHeight() else (@container.getHeight() - 1)
+    @form_field.fire("liszt:showing_dropdown", {chosen: this})
     @dropdown.setStyle {"top":  dd_top + "px", "left":0}
     @results_showing = true
 
@@ -235,6 +240,7 @@ class Chosen extends AbstractChosen
   results_hide: ->
     @selected_item.removeClassName('chzn-single-with-drop') unless @is_multiple
     this.result_clear_highlight()
+    @form_field.fire("liszt:hiding_dropdown", {chosen: this})
     @dropdown.setStyle({"left":"-9000px"})
     @results_showing = false
 
@@ -278,6 +284,9 @@ class Chosen extends AbstractChosen
       this.results_show()
 
   choice_build: (item) ->
+    if @is_multiple and @max_selected_options <= @choices
+      @form_field.fire("liszt:maxselected", {chosen: this})
+      return false
     choice_id = @container_id + "_c_" + item.array_index
     @choices += 1
     @search_container.insert
@@ -303,13 +312,18 @@ class Chosen extends AbstractChosen
     this.result_deselect link.readAttribute("rel")
     link.up('li').remove()
 
-  results_reset: (evt) ->
+  results_reset: ->
     @form_field.options[0].selected = true
     @selected_item.down("span").update(@default_text)
+    @selected_item.addClassName("chzn-default") if not @is_multiple
     this.show_search_field_default()
-    evt.target.remove()
+    this.results_reset_cleanup()
     @form_field.simulate("change") if typeof Event.simulate is 'function'
     this.results_hide() if @active_field
+
+  results_reset_cleanup: ->
+    deselect_trigger = @selected_item.down("abbr")
+    deselect_trigger.remove() if(deselect_trigger)
   
   result_select: (evt) ->
     if @result_highlight
@@ -320,6 +334,7 @@ class Chosen extends AbstractChosen
         this.result_deactivate high
       else
         @search_results.descendants(".result-selected").invoke "removeClassName", "result-selected"
+        @selected_item.removeClassName("chzn-default")
         @result_single_selected = high
       
       high.addClassName("result-selected")
@@ -339,8 +354,10 @@ class Chosen extends AbstractChosen
       this.results_hide() unless evt.metaKey and @is_multiple
 
       @search_field.value = ""
-
-      @form_field.simulate("change") if typeof Event.simulate is 'function'
+      
+      @form_field.simulate("change") if typeof Event.simulate is 'function' && (@is_multiple || @form_field.value != @current_value)
+      @current_value = @form_field.value
+      
       this.search_field_scale()
 
   result_activate: (el) ->
@@ -372,7 +389,8 @@ class Chosen extends AbstractChosen
     results = 0
 
     searchText = if @search_field.value is @default_text then "" else @search_field.value.strip().escapeHTML()
-    regex = new RegExp('^' + searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
+    regexAnchor = if @search_contains then "" else "^"
+    regex = new RegExp(regexAnchor + searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
     zregex = new RegExp(searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
 
     for option in @results_data
@@ -477,7 +495,10 @@ class Chosen extends AbstractChosen
       this.clear_backstroke()
     else
       @pending_backstroke = @search_container.siblings("li.search-choice").last()
-      @pending_backstroke.addClassName("search-choice-focus")
+      if @single_backstroke_delete
+        @keydown_backstroke()
+      else
+        @pending_backstroke.addClassName("search-choice-focus")
 
   clear_backstroke: ->
     @pending_backstroke.removeClassName("search-choice-focus") if @pending_backstroke
